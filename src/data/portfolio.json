@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "type": "photo",
+        "src": "/images/nightlife_crowd.png",
+        "title": "Euforia",
+        "category": "Vida Nocturna"
+    },
+    {
+        "id": 2,
+        "type": "photo",
+        "src": "/images/dj_performance.png",
+        "title": "El Drop",
+        "category": "Eventos"
+    },
+    {
+        "id": 3,
+        "type": "photo",
+        "src": "/images/party_portrait.png",
+        "title": "Vibe",
+        "category": "Social"
+    }
+]
