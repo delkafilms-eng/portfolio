@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import Login from './components/admin/Login';
 import Dashboard from './components/admin/Dashboard';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -35,6 +36,7 @@ function App() {
               <Navbar />
               <Home />
               <Footer />
+              <ScrollToTop />
             </>
           } />
 

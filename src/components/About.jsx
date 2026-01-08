@@ -28,26 +28,26 @@ const About = () => {
                     <div className="about-text">
                         <h2 className="section-title">Sobre Luis</h2>
                         <p className="lead-text">
-                            Especializado en el pulso de la ciudad, capturo la energía cruda de la vida nocturna, festivales y eventos exclusivos.
+                            Especialista en producción audiovisual para artistas y eventos. Transformo momentos efímeros en contenido visual estratégico que fortalece la identidad de marca y amplifica el alcance de tus proyectos.
                         </p>
                         <p>
-                            Con más de 5 años de experiencia en la escena, sé cómo navegar entre la multitud y encontrar el ángulo perfecto sin interrumpir el flujo. Mi trabajo documenta la atmósfera, las luces y las personas que hacen que cada noche sea única.
+                            Con más de 5 años de experiencia trabajando con artistas, promotores y marcas, entiendo las necesidades específicas del sector. Mi enfoque combina creatividad cinematográfica con estrategia de contenido, entregando material que no solo documenta, sino que potencia tu presencia digital y profesional.
                         </p>
                         <p>
-                            Desde clubes underground hasta festivales en escenarios principales, entrego visuales de alto impacto que cuentan la historia de la noche.
+                            Desde sesiones de artista y backstage hasta cobertura completa de festivales y eventos corporativos, ofrezco soluciones personalizadas que se adaptan a tu visión y objetivos de marca.
                         </p>
                         <div className="stats">
                             <div className="stat-item">
                                 <span className="stat-number">500+</span>
-                                <span className="stat-label">Eventos Cubiertos</span>
+                                <span className="stat-label">Proyectos Completados</span>
                             </div>
                             <div className="stat-item">
                                 <span className="stat-number">50+</span>
-                                <span className="stat-label">Salas</span>
+                                <span className="stat-label">Artistas Colaborados</span>
                             </div>
                             <div className="stat-item">
                                 <span className="stat-number">100%</span>
-                                <span className="stat-label">Energía</span>
+                                <span className="stat-label">Compromiso</span>
                             </div>
                         </div>
                     </div>

@@ -6,21 +6,21 @@ const Hero = () => {
     return (
         <section className="hero">
             <div className="hero-content container">
-                <h2 className="hero-subtitle">Fotografía de Eventos y Vida Nocturna</h2>
+                <h2 className="hero-subtitle">Fotografía y Video Profesional para Artistas y Eventos</h2>
                 <h1 className="hero-title">
-                    DUEÑO DE LA <br />
-                    <span className="text-gradient">NOCHE</span>
+                    ELEVA TU <br />
+                    <span className="text-gradient">MARCA</span>
                 </h1>
                 <p className="hero-description">
-                    Capturando la energía del momento. Te ayudo a dar vida a la atmósfera de tu evento a través de visuales cinematográficos.
+                    Servicios profesionales de fotografía y video para artistas, festivales y eventos. Capturamos la esencia de tu marca con contenido visual de alto impacto que conecta con tu audiencia y potencia tu presencia digital.
                 </p>
                 <a href="#gallery" className="cta-button">
-                    Ver Eventos
+                    Ver Portfolio
                 </a>
             </div>
 
             <div className="scroll-indicator">
-                <span>DESCUBRE MÁS</span>
+                <span>EXPLORA MIS SERVICIOS</span>
                 <ChevronDown className="bounce" />
             </div>
 

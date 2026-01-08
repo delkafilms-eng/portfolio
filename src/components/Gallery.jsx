@@ -45,13 +45,13 @@ const Gallery = () => {
     }, [items, filter]);
 
     if (loading) {
-        return <div className="gallery-loading">Cargando trabajos...</div>;
+        return <div className="gallery-loading">Cargando portfolio...</div>;
     }
 
     return (
         <section id="gallery" className="section gallery-section">
             <div className="container">
-                <h2 className="section-title">MIS TRABAJOS</h2>
+                <h2 className="section-title">PORTFOLIO</h2>
 
                 <div className="filter-buttons">
                     {categories.map(cat => (
@@ -67,7 +67,7 @@ const Gallery = () => {
 
                 <div className="gallery-grid">
                     {filteredItems.length === 0 ? (
-                        <p className="no-items">No hay trabajos en esta categoría aún.</p>
+                        <p className="no-items">No hay proyectos en esta categoría aún.</p>
                     ) : (
                         filteredItems.map(item => (
                             <div key={item.id} className="gallery-item" onClick={() => setSelectedItem(item)}>

@@ -65,7 +65,7 @@ const FeaturedVideos = () => {
     return (
         <section className="section featured-section">
             <div className="container">
-                <h2 className="section-title">¿QUÉ PUEDES ESPERAR DE MI?</h2>
+                <h2 className="section-title">TRABAJOS DESTACADOS</h2>
                 <div className="featured-grid">
                     {content.map((video) => (
                         <VideoCard key={video.id} video={video} />

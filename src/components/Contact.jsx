@@ -10,10 +10,9 @@ const Contact = () => {
 
                 <div className="contact-container">
                     <div className="contact-info">
-                        <h3>Creemos Algo Juntos</h3>
+                        <h3>Hablemos de Tu Proyecto</h3>
                         <p>
-                            Disponible para proyectos freelance y colaboraciones en todo el mundo.
-                            Escríbeme para discutir tu próximo proyecto.
+                            ¿Buscas contenido visual profesional para tu próximo evento, sesión de artista o campaña? Estoy disponible para colaboraciones y proyectos en todo el mundo. Cuéntame tu visión y trabajemos juntos para crear material que eleve tu marca.
                         </p>
 
                         <div className="contact-details">
@@ -41,7 +40,7 @@ const Contact = () => {
                             <input type="email" name="email" placeholder="Tu Email" required />
                         </div>
                         <div className="form-group">
-                            <textarea name="message" placeholder="Cuéntame sobre tu proyecto" rows="5" required></textarea>
+                            <textarea name="message" placeholder="Describe tu proyecto, fecha del evento, tipo de cobertura necesaria y cualquier detalle relevante" rows="5" required></textarea>
                         </div>
                         <button type="submit" className="submit-btn">Enviar Mensaje</button>
                     </form>
