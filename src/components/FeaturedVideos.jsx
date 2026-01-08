@@ -78,20 +78,64 @@ const FeaturedVideos = () => {
 
 const VideoCard = ({ video }) => {
     const videoRef = useRef(null);
-    const [isHovered, setIsHovered] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
-    const handleMouseEnter = () => {
-        setIsHovered(true);
+    useEffect(() => {
+        // Detectar si es dispositivo móvil/tablet
+        const checkMobile = () => {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   ('ontouchstart' in window) ||
+                   (navigator.maxTouchPoints > 0);
+        };
+        setIsMobile(checkMobile());
+    }, []);
+
+    const handlePlay = () => {
+        setIsPlaying(true);
         if (videoRef.current) {
             videoRef.current.play().catch(e => console.log("Autoplay prevented", e));
         }
     };
 
-    const handleMouseLeave = () => {
-        setIsHovered(false);
+    const handlePause = () => {
+        setIsPlaying(false);
         if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
+        }
+    };
+
+    const handleMouseEnter = () => {
+        if (!isMobile) {
+            handlePlay();
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (!isMobile) {
+            handlePause();
+        }
+    };
+
+    const handleClick = () => {
+        if (isMobile) {
+            if (isPlaying) {
+                handlePause();
+            } else {
+                handlePlay();
+            }
+        }
+    };
+
+    const handleVideoClick = (e) => {
+        if (isMobile && video.type !== 'youtube') {
+            e.stopPropagation();
+            if (isPlaying) {
+                handlePause();
+            } else {
+                handlePlay();
+            }
         }
     };
 
@@ -100,21 +144,37 @@ const VideoCard = ({ video }) => {
             className="featured-card"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            onClick={handleClick}
         >
-            <div className={`video-overlay ${isHovered ? 'hidden' : ''}`}>
+            <div className={`video-overlay ${isPlaying ? 'hidden' : ''}`}>
                 <div className="overlay-content">
                     <h3>{video.title}</h3>
-                    <p>Ver Video</p>
+                    <p>{isMobile ? 'Toca para reproducir' : 'Ver Video'}</p>
                 </div>
             </div>
 
+            {isMobile && isPlaying && (
+                <button 
+                    className="pause-button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handlePause();
+                    }}
+                    aria-label="Pausar video"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                </button>
+            )}
+
             {video.type === 'youtube' ? (
                 <div className="youtube-wrapper">
-                    {isHovered ? (
+                    {isPlaying ? (
                         <iframe
                             width="100%"
                             height="100%"
-                            src={`https://www.youtube.com/embed/${video.src}?autoplay=1&mute=0&controls=0&loop=1&playlist=${video.src}`}
+                            src={`https://www.youtube.com/embed/${video.src}?autoplay=1&mute=0&controls=1&loop=1&playlist=${video.src}`}
                             title={video.title}
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -135,9 +195,10 @@ const VideoCard = ({ video }) => {
                     src={video.src}
                     className="featured-video"
                     loop
-                    // muted removed to enable audio
                     playsInline
                     poster={video.poster}
+                    onClick={handleVideoClick}
+                    controls={isMobile && isPlaying}
                 />
             )}
         </div>

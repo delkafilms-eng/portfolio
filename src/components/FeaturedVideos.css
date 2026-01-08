@@ -38,6 +38,34 @@
     display: block;
 }
 
+.pause-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+.pause-button:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: var(--accent);
+    transform: scale(1.1);
+}
+
+.pause-button:active {
+    transform: scale(0.95);
+}
+
 /* Overlay that shows when NOT hovering (default state) */
 .video-overlay {
     position: absolute;
@@ -134,5 +162,17 @@
 
     .overlay-content h3 {
         font-size: 0.9rem;
+    }
+
+    .pause-button {
+        width: 45px;
+        height: 45px;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .pause-button svg {
+        width: 20px;
+        height: 20px;
     }
 }
