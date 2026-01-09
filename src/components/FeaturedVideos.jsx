@@ -18,10 +18,19 @@ const FeaturedVideos = () => {
                 const querySnapshot = await getDocs(q);
                 const allItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                // Filter for "Destacados" (case-insensitive match)
+                // Helper function to normalize category (handle both string and array)
+                const normalizeCategories = (category) => {
+                    if (!category) return [];
+                    if (Array.isArray(category)) {
+                        return category.map(c => String(c).trim()).filter(c => c);
+                    }
+                    return [String(category).trim()].filter(c => c);
+                };
+
+                // Filter for "Destacados" (case-insensitive match, supports multiple categories)
                 const featured = allItems.filter(item => {
-                    const category = item.category ? item.category.trim() : '';
-                    return category.toLowerCase() === 'destacados';
+                    const itemCategories = normalizeCategories(item.category);
+                    return itemCategories.some(cat => cat.toLowerCase() === 'destacados');
                 });
 
                 console.log("Total items:", allItems.length);
@@ -34,9 +43,18 @@ const FeaturedVideos = () => {
                     const q = query(collection(db, 'portfolio_items'));
                     const querySnapshot = await getDocs(q);
                     const allItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    const normalizeCategories = (category) => {
+                        if (!category) return [];
+                        if (Array.isArray(category)) {
+                            return category.map(c => String(c).trim()).filter(c => c);
+                        }
+                        return [String(category).trim()].filter(c => c);
+                    };
+                    
                     const featured = allItems.filter(item => {
-                        const category = item.category ? item.category.trim() : '';
-                        return category.toLowerCase() === 'destacados';
+                        const itemCategories = normalizeCategories(item.category);
+                        return itemCategories.some(cat => cat.toLowerCase() === 'destacados');
                     });
                     console.log("Fallback - Found Destacados:", featured.length, featured);
                     setVideos(featured);

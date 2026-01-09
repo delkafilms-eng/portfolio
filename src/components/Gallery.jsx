@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, ZoomIn, Play } from 'lucide-react';
+import { X, ZoomIn, Play, ChevronDown } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import './Gallery.css';
+
+const ITEMS_PER_PAGE = 20;
 
 const Gallery = () => {
     const [selectedItem, setSelectedItem] = useState(null);
     const [filter, setFilter] = useState('VER TODO');
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [visibleItemsCount, setVisibleItemsCount] = useState(ITEMS_PER_PAGE);
 
     // Fetch items from Firestore
     useEffect(() => {
@@ -28,21 +31,70 @@ const Gallery = () => {
         fetchPortfolio();
     }, []);
 
+    // Helper function to normalize category (handle both string and array)
+    const normalizeCategories = (category) => {
+        if (!category) return [];
+        if (Array.isArray(category)) {
+            return category.map(c => String(c).trim()).filter(c => c);
+        }
+        return [String(category).trim()].filter(c => c);
+    };
+
+    // Helper function to check if item has category (handles multiple categories)
+    const itemHasCategory = (item, categoryName) => {
+        const itemCategories = normalizeCategories(item.category);
+        return itemCategories.some(cat => 
+            cat.toLowerCase() === categoryName.toLowerCase()
+        );
+    };
+
     const categories = useMemo(() => {
         if (items.length === 0) return ['VER TODO'];
-        // Exclude 'Destacados' from gallery categories (case insensitive)
-        const visibleItems = items.filter(i => i.category.trim().toLowerCase() !== 'destacados');
-        const cats = new Set(visibleItems.map(item => item.category));
-        return ['VER TODO', ...Array.from(cats)];
+        
+        const allCategories = new Set();
+        items.forEach(item => {
+            const itemCategories = normalizeCategories(item.category);
+            itemCategories.forEach(cat => {
+                // Exclude 'Destacados' from gallery categories
+                if (cat.toLowerCase() !== 'destacados') {
+                    allCategories.add(cat);
+                }
+            });
+        });
+        
+        return ['VER TODO', ...Array.from(allCategories).sort()];
     }, [items]);
 
     const filteredItems = useMemo(() => {
         // Exclude 'Destacados' from main gallery display
-        const visibleItems = items.filter(i => i.category.trim().toLowerCase() !== 'destacados');
-        return filter === 'VER TODO'
-            ? visibleItems
-            : visibleItems.filter(item => item.category === filter);
+        const visibleItems = items.filter(item => {
+            const itemCategories = normalizeCategories(item.category);
+            return !itemCategories.some(cat => cat.toLowerCase() === 'destacados');
+        });
+        
+        if (filter === 'VER TODO') {
+            return visibleItems;
+        }
+        
+        // Filter items that have the selected category in any of their categories
+        return visibleItems.filter(item => itemHasCategory(item, filter));
     }, [items, filter]);
+
+    // Reset visible count when filter changes
+    useEffect(() => {
+        setVisibleItemsCount(ITEMS_PER_PAGE);
+    }, [filter]);
+
+    const displayedItems = useMemo(() => {
+        return filteredItems.slice(0, visibleItemsCount);
+    }, [filteredItems, visibleItemsCount]);
+
+    const hasMoreItems = filteredItems.length > visibleItemsCount;
+
+    const handleLoadMore = () => {
+        const newCount = visibleItemsCount + ITEMS_PER_PAGE;
+        setVisibleItemsCount(newCount);
+    };
 
     if (loading) {
         return <div className="gallery-loading">Cargando portfolio...</div>;
@@ -69,7 +121,7 @@ const Gallery = () => {
                     {filteredItems.length === 0 ? (
                         <p className="no-items">No hay proyectos en esta categoría aún.</p>
                     ) : (
-                        filteredItems.map(item => (
+                        displayedItems.map(item => (
                             <div key={item.id} className="gallery-item" onClick={() => setSelectedItem(item)}>
                                 {item.type === 'video' || item.type === 'youtube' ? (
                                     <div className="video-thumbnail">
@@ -85,7 +137,7 @@ const Gallery = () => {
                                 <div className="item-overlay">
                                     <div className="item-info">
                                         <h3>{item.title}</h3>
-                                        <p>{item.category}</p>
+                                        <p>{normalizeCategories(item.category).join(', ')}</p>
                                     </div>
                                     <ZoomIn className="zoom-icon" />
                                 </div>
@@ -93,6 +145,18 @@ const Gallery = () => {
                         ))
                     )}
                 </div>
+
+                {hasMoreItems && (
+                    <div className="load-more-container">
+                        <button className="load-more-button" onClick={handleLoadMore}>
+                            <div className="load-more-content">
+                                <span className="load-more-text">Ver más</span>
+                                <ChevronDown className="load-more-arrow" size={24} />
+                            </div>
+                            <div className="load-more-gradient"></div>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {selectedItem && (
@@ -124,7 +188,7 @@ const Gallery = () => {
                         )}
                         <div className="lightbox-caption">
                             <h3>{selectedItem.title}</h3>
-                            <p>{selectedItem.category}</p>
+                            <p>{normalizeCategories(selectedItem.category).join(', ')}</p>
                         </div>
                     </div>
                 </div>

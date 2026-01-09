@@ -66,6 +66,11 @@ a {
   transition: color var(--transition-fast);
 }
 
+/* Smooth scroll behavior for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 ul {
   list-style: none;
 }

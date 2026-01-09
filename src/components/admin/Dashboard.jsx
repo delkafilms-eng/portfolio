@@ -21,7 +21,9 @@ const Dashboard = () => {
 
     const [items, setItems] = useState([]);
     const [editingCategory, setEditingCategory] = useState(null); // ID del item siendo editado
-    const [editCategoryValue, setEditCategoryValue] = useState(''); // Valor temporal de la categoría
+    const [editCategoryValue, setEditCategoryValue] = useState(''); // Valor temporal de la categoría (string con comas)
+    const [selectedCategories, setSelectedCategories] = useState([]); // Categorías seleccionadas con checkboxes
+    const [newCategoryInput, setNewCategoryInput] = useState(''); // Input para nueva categoría
     const [editingCategoryName, setEditingCategoryName] = useState(null); // Nombre de categoría siendo editada
     const [editCategoryNameValue, setEditCategoryNameValue] = useState(''); // Nuevo nombre de categoría
     const [galleryFilter, setGalleryFilter] = useState('Todas'); // Filtro para la galería actual
@@ -103,9 +105,14 @@ const Dashboard = () => {
                     itemTitle = '';
                 }
 
+                // Parse categories: split by comma and trim each
+                const categoriesArray = category.split(',')
+                    .map(c => c.trim())
+                    .filter(c => c.length > 0);
+
                 const newItem = {
                     title: itemTitle,
-                    category: category.trim(),
+                    category: categoriesArray.length === 1 ? categoriesArray[0] : categoriesArray,
                     type: data.resource_type,
                     src: data.secure_url,
                     poster: data.resource_type === 'video' ? data.secure_url.replace(/\.[^/.]+$/, ".jpg") : null,
@@ -142,25 +149,54 @@ const Dashboard = () => {
         }
     };
 
+    // Helper function to normalize category (handle both string and array)
+    const normalizeCategories = (category) => {
+        if (!category) return [];
+        if (Array.isArray(category)) {
+            return category.map(c => String(c).trim()).filter(c => c);
+        }
+        return [String(category).trim()].filter(c => c);
+    };
+
     const handleEditCategory = (item) => {
         setEditingCategory(item.id);
-        setEditCategoryValue(item.category);
+        const categories = normalizeCategories(item.category);
+        setEditCategoryValue(categories.join(', '));
+        setSelectedCategories(categories);
+        setNewCategoryInput('');
     };
 
     const handleSaveCategory = async (id) => {
-        if (!editCategoryValue.trim()) {
-            alert('La categoría no puede estar vacía');
+        // Usar las categorías seleccionadas con checkboxes, o el input de texto si está siendo usado
+        let categoriesArray = [];
+        
+        if (selectedCategories.length > 0) {
+            categoriesArray = selectedCategories;
+        } else {
+            // Fallback al input de texto si no hay checkboxes seleccionados
+            categoriesArray = editCategoryValue.split(',')
+                .map(c => c.trim())
+                .filter(c => c.length > 0);
+        }
+        
+        if (categoriesArray.length === 0) {
+            alert('Selecciona al menos una categoría');
             return;
         }
+        
         try {
+            const categoryToSave = categoriesArray.length === 1 ? categoriesArray[0] : categoriesArray;
+            
             await updateDoc(doc(db, 'portfolio_items', id), {
-                category: editCategoryValue.trim()
+                category: categoryToSave
             });
             setItems(items.map(item => 
-                item.id === id ? { ...item, category: editCategoryValue.trim() } : item
+                item.id === id ? { ...item, category: categoryToSave } : item
             ));
             setEditingCategory(null);
             setEditCategoryValue('');
+            setSelectedCategories([]);
+            setNewCategoryInput('');
         } catch (error) {
             console.error('Error updating category:', error);
             alert('Error al actualizar la categoría');
@@ -170,6 +206,36 @@ const Dashboard = () => {
     const handleCancelEdit = () => {
         setEditingCategory(null);
         setEditCategoryValue('');
+        setSelectedCategories([]);
+        setNewCategoryInput('');
+    };
+
+    // Obtener todas las categorías disponibles
+    const getAllCategories = useMemo(() => {
+        const allCategories = new Set();
+        items.forEach(i => {
+            const cats = normalizeCategories(i.category);
+            cats.forEach(cat => allCategories.add(cat));
+        });
+        return Array.from(allCategories).sort();
+    }, [items]);
+
+    const handleToggleCategory = (category) => {
+        setSelectedCategories(prev => {
+            if (prev.includes(category)) {
+                return prev.filter(c => c !== category);
+            } else {
+                return [...prev, category];
+            }
+        });
+    };
+
+    const handleAddNewCategory = () => {
+        const trimmed = newCategoryInput.trim();
+        if (trimmed && !selectedCategories.includes(trimmed)) {
+            setSelectedCategories(prev => [...prev, trimmed]);
+            setNewCategoryInput('');
+        }
     };
 
     // Editar título de un item
@@ -203,17 +269,23 @@ const Dashboard = () => {
     const categoryStats = useMemo(() => {
         const stats = {};
         items.forEach(item => {
-            const cat = item.category || 'Sin categoria';
-            if (!stats[cat]) {
-                stats[cat] = { photos: 0, videos: 0 };
+            const categories = normalizeCategories(item.category);
+            if (categories.length === 0) {
+                categories.push('Sin categoria');
             }
-            // Determinar si es foto o video basado en el tipo
-            if (item.type === 'video' || item.type === 'youtube') {
-                stats[cat].videos++;
-            } else {
-                // Por defecto, si no es video, es foto (image o sin tipo)
-                stats[cat].photos++;
-            }
+            
+            categories.forEach(cat => {
+                if (!stats[cat]) {
+                    stats[cat] = { photos: 0, videos: 0 };
+                }
+                // Determinar si es foto o video basado en el tipo
+                if (item.type === 'video' || item.type === 'youtube') {
+                    stats[cat].videos++;
+                } else {
+                    // Por defecto, si no es video, es foto (image o sin tipo)
+                    stats[cat].photos++;
+                }
+            });
         });
         return stats;
     }, [items]);
@@ -228,7 +300,10 @@ const Dashboard = () => {
         if (galleryFilter === 'Todas') {
             return items;
         }
-        return items.filter(item => item.category === galleryFilter);
+        return items.filter(item => {
+            const itemCategories = normalizeCategories(item.category);
+            return itemCategories.some(cat => cat === galleryFilter);
+        });
     }, [items, galleryFilter]);
 
     // Renombrar categoría (actualizar todos los items)
@@ -243,28 +318,44 @@ const Dashboard = () => {
             return;
         }
 
-        if (!window.confirm(`¿Renombrar "${oldCategoryName}" a "${newCategoryName.trim()}"? Todos los items se actualizarán.`)) {
+        if (!window.confirm(`¿Renombrar "${oldCategoryName}" a "${newCategoryName.trim()}"? Todos los items que tengan esta categoría se actualizarán.`)) {
             return;
         }
 
         setUploading(true);
         try {
             const batch = writeBatch(db);
-            const itemsToUpdate = items.filter(item => item.category === oldCategoryName);
+            const itemsToUpdate = items.filter(item => {
+                const itemCategories = normalizeCategories(item.category);
+                return itemCategories.includes(oldCategoryName);
+            });
             
             itemsToUpdate.forEach(item => {
                 const itemRef = doc(db, 'portfolio_items', item.id);
-                batch.update(itemRef, { category: newCategoryName.trim() });
+                const itemCategories = normalizeCategories(item.category);
+                const updatedCategories = itemCategories.map(cat => 
+                    cat === oldCategoryName ? newCategoryName.trim() : cat
+                );
+                const categoryToSave = updatedCategories.length === 1 ? updatedCategories[0] : updatedCategories;
+                batch.update(itemRef, { category: categoryToSave });
             });
 
             await batch.commit();
             
             // Actualizar estado local
-            setItems(items.map(item => 
-                item.category === oldCategoryName 
-                    ? { ...item, category: newCategoryName.trim() }
-                    : item
-            ));
+            setItems(items.map(item => {
+                const itemCategories = normalizeCategories(item.category);
+                if (itemCategories.includes(oldCategoryName)) {
+                    const updatedCategories = itemCategories.map(cat => 
+                        cat === oldCategoryName ? newCategoryName.trim() : cat
+                    );
+                    return { 
+                        ...item, 
+                        category: updatedCategories.length === 1 ? updatedCategories[0] : updatedCategories
+                    };
+                }
+                return item;
+            }));
             
             setEditingCategoryName(null);
             setEditCategoryNameValue('');
@@ -277,32 +368,49 @@ const Dashboard = () => {
         }
     };
 
-    // Borrar categoría (mover items a "Sin categoria")
+    // Borrar categoría (remover la categoría de los items, si solo tiene una se pone "Sin categoria")
     const handleDeleteCategory = async (categoryName) => {
-        if (!window.confirm(`¿Borrar la categoría "${categoryName}"? Todos los items se moverán a "Sin categoria".`)) {
+        if (!window.confirm(`¿Borrar la categoría "${categoryName}"? Se eliminará esta categoría de todos los items. Si un item solo tiene esta categoría, se pondrá "Sin categoria".`)) {
             return;
         }
 
         setUploading(true);
         try {
             const batch = writeBatch(db);
-            const itemsToUpdate = items.filter(item => item.category === categoryName);
+            const itemsToUpdate = items.filter(item => {
+                const itemCategories = normalizeCategories(item.category);
+                return itemCategories.includes(categoryName);
+            });
             
             itemsToUpdate.forEach(item => {
                 const itemRef = doc(db, 'portfolio_items', item.id);
-                batch.update(itemRef, { category: 'Sin categoria' });
+                const itemCategories = normalizeCategories(item.category);
+                const updatedCategories = itemCategories.filter(cat => cat !== categoryName);
+                
+                // Si no quedan categorías, poner "Sin categoria"
+                const categoryToSave = updatedCategories.length === 0 
+                    ? 'Sin categoria'
+                    : (updatedCategories.length === 1 ? updatedCategories[0] : updatedCategories);
+                
+                batch.update(itemRef, { category: categoryToSave });
             });
 
             await batch.commit();
             
             // Actualizar estado local
-            setItems(items.map(item => 
-                item.category === categoryName 
-                    ? { ...item, category: 'Sin categoria' }
-                    : item
-            ));
+            setItems(items.map(item => {
+                const itemCategories = normalizeCategories(item.category);
+                if (itemCategories.includes(categoryName)) {
+                    const updatedCategories = itemCategories.filter(cat => cat !== categoryName);
+                    const categoryToSave = updatedCategories.length === 0 
+                        ? 'Sin categoria'
+                        : (updatedCategories.length === 1 ? updatedCategories[0] : updatedCategories);
+                    return { ...item, category: categoryToSave };
+                }
+                return item;
+            }));
             
-            alert(`Categoría borrada. ${itemsToUpdate.length} item(s) movido(s) a "Sin categoria".`);
+            alert(`Categoría borrada. ${itemsToUpdate.length} item(s) actualizado(s).`);
         } catch (error) {
             console.error('Error deleting category:', error);
             alert('Error al borrar la categoría');
@@ -347,24 +455,34 @@ const Dashboard = () => {
                     <h2>2. Subir Trabajos a la Galería</h2>
 
                     <div className="form-group">
-                        <label>Categoría (MUUUY IMPORTANTE):</label>
-                        <p className="admin-hint">Escribe <strong>Destacados</strong> para que salgan en la sección especial de arriba. Puedes escribir cualquier categoría nueva o seleccionar una existente.</p>
+                        <label>Categorías (MUUUY IMPORTANTE):</label>
+                        <p className="admin-hint">Escribe <strong>Destacados</strong> para que salgan en la sección especial de arriba. Puedes escribir <strong>múltiples categorías separadas por comas</strong> (ej: "Bodas, Eventos, Vida Nocturna").</p>
                         <input
                             type="text"
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
                             list="category-options"
-                            placeholder="Escribe o selecciona: Destacados, Bodas, Eventos, Vida Nocturna..."
+                            placeholder="Ej: Destacados, Bodas, Eventos (separadas por comas)"
                         />
                         <datalist id="category-options">
                             <option value="Destacados" />
-                            {Array.from(new Set(items.map(i => i.category))).map(cat => (
-                                <option key={cat} value={cat} />
-                            ))}
+                            {(() => {
+                                const allCategories = new Set();
+                                items.forEach(item => {
+                                    if (Array.isArray(item.category)) {
+                                        item.category.forEach(cat => allCategories.add(cat));
+                                    } else if (item.category) {
+                                        allCategories.add(item.category);
+                                    }
+                                });
+                                return Array.from(allCategories).map(cat => (
+                                    <option key={cat} value={cat} />
+                                ));
+                            })()}
                         </datalist>
                         {category && (
                             <p className="admin-hint" style={{ marginTop: '0.5rem', color: '#28a745' }}>
-                                ✅ Categoría: <strong>{category}</strong>
+                                ✅ Categorías: <strong>{category.split(',').map(c => c.trim()).filter(c => c).join(', ')}</strong>
                             </p>
                         )}
                     </div>
@@ -435,9 +553,14 @@ const Dashboard = () => {
 
                             setUploading(true);
                             try {
+                                // Parse categories: split by comma and trim each
+                                const categoriesArray = category.split(',')
+                                    .map(c => c.trim())
+                                    .filter(c => c.length > 0);
+
                                 const newItem = {
                                     title: title || 'Video YouTube',
-                                    category: category,
+                                    category: categoriesArray.length === 1 ? categoriesArray[0] : categoriesArray,
                                     type: 'youtube',
                                     src: videoId,
                                     poster: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
@@ -746,60 +869,140 @@ const Dashboard = () => {
                                         </p>
                                     )}
                                     {editingCategory === item.id ? (
-                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', flexDirection: 'column' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                                                <select
-                                                    value={editCategoryValue}
-                                                    onChange={(e) => setEditCategoryValue(e.target.value)}
-                                                    style={{ 
-                                                        padding: '0.25rem 0.5rem', 
-                                                        fontSize: '0.9rem',
-                                                        flex: 1,
-                                                        border: '1px solid #ddd',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleSaveCategory(item.id);
-                                                        if (e.key === 'Escape') handleCancelEdit();
-                                                    }}
-                                                    autoFocus
-                                                >
-                                                    <option value="">Selecciona una categoría...</option>
-                                                    {Array.from(new Set(items.map(i => i.category))).sort().map(cat => (
-                                                        <option key={cat} value={cat}>{cat}</option>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            gap: '0.75rem', 
+                                            alignItems: 'flex-start', 
+                                            marginTop: '0.5rem', 
+                                            flexDirection: 'column',
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '6px',
+                                            border: '1px solid #dee2e6'
+                                        }}>
+                                            <div style={{ width: '100%' }}>
+                                                <label style={{ 
+                                                    display: 'block', 
+                                                    fontSize: '0.85rem', 
+                                                    fontWeight: 'bold', 
+                                                    marginBottom: '0.5rem',
+                                                    color: '#495057'
+                                                }}>
+                                                    Selecciona categorías:
+                                                </label>
+                                                <div style={{ 
+                                                    display: 'flex', 
+                                                    flexWrap: 'wrap', 
+                                                    gap: '0.5rem',
+                                                    maxHeight: '150px',
+                                                    overflowY: 'auto',
+                                                    padding: '0.5rem',
+                                                    backgroundColor: 'white',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #ddd'
+                                                }}>
+                                                    {getAllCategories.map(cat => (
+                                                        <label 
+                                                            key={cat}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.5rem',
+                                                                padding: '0.4rem 0.6rem',
+                                                                backgroundColor: selectedCategories.includes(cat) ? '#e7f3ff' : 'transparent',
+                                                                border: selectedCategories.includes(cat) ? '1px solid #007bff' : '1px solid #ddd',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.85rem',
+                                                                transition: 'all 0.2s',
+                                                                userSelect: 'none'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                if (!selectedCategories.includes(cat)) {
+                                                                    e.currentTarget.style.backgroundColor = '#f0f0f0';
+                                                                }
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (!selectedCategories.includes(cat)) {
+                                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                                }
+                                                            }}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedCategories.includes(cat)}
+                                                                onChange={() => handleToggleCategory(cat)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                            <span>{cat}</span>
+                                                        </label>
                                                     ))}
-                                                </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div style={{ width: '100%', display: 'flex', gap: '0.5rem' }}>
                                                 <input
                                                     type="text"
-                                                    value={editCategoryValue}
-                                                    onChange={(e) => setEditCategoryValue(e.target.value)}
-                                                    placeholder="O escribe nueva categoría"
+                                                    value={newCategoryInput}
+                                                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                                                    placeholder="Escribe nueva categoría y presiona Enter"
                                                     style={{ 
-                                                        padding: '0.25rem 0.5rem', 
-                                                        fontSize: '0.9rem',
+                                                        padding: '0.4rem 0.6rem', 
+                                                        fontSize: '0.85rem',
                                                         flex: 1,
                                                         border: '1px solid #ddd',
                                                         borderRadius: '4px'
                                                     }}
                                                     onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleSaveCategory(item.id);
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleAddNewCategory();
+                                                        }
                                                         if (e.key === 'Escape') handleCancelEdit();
                                                     }}
                                                 />
+                                                <button
+                                                    onClick={handleAddNewCategory}
+                                                    disabled={!newCategoryInput.trim()}
+                                                    style={{
+                                                        padding: '0.4rem 0.8rem',
+                                                        background: newCategoryInput.trim() ? '#007bff' : '#6c757d',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: newCategoryInput.trim() ? 'pointer' : 'not-allowed',
+                                                        fontSize: '0.85rem',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    + Añadir
+                                                </button>
                                             </div>
+                                            
+                                            {selectedCategories.length > 0 && (
+                                                <div style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    color: '#28a745',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    ✓ {selectedCategories.length} categoría(s) seleccionada(s): {selectedCategories.join(', ')}
+                                                </div>
+                                            )}
+                                            
                                             <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
                                                 <button 
                                                     onClick={() => handleSaveCategory(item.id)}
                                                     style={{
-                                                        padding: '0.4rem 0.8rem',
+                                                        padding: '0.5rem 1rem',
                                                         background: '#28a745',
                                                         color: 'white',
                                                         border: 'none',
                                                         borderRadius: '4px',
                                                         cursor: 'pointer',
                                                         fontSize: '0.85rem',
-                                                        flex: 1
+                                                        flex: 1,
+                                                        fontWeight: 'bold'
                                                     }}
                                                 >
                                                     ✓ Guardar
@@ -807,7 +1010,7 @@ const Dashboard = () => {
                                                 <button 
                                                     onClick={handleCancelEdit}
                                                     style={{
-                                                        padding: '0.4rem 0.8rem',
+                                                        padding: '0.5rem 1rem',
                                                         background: '#6c757d',
                                                         color: 'white',
                                                         border: 'none',
@@ -822,7 +1025,7 @@ const Dashboard = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="category-tag">{item.category}</p>
+                                        <p className="category-tag">{normalizeCategories(item.category).join(', ')}</p>
                                     )}
                                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                                         {editingCategory !== item.id && (
