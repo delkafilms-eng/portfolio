@@ -5,6 +5,7 @@ import './About.css';
 
 const About = () => {
     const [profileImage, setProfileImage] = useState(null);
+    const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -52,8 +53,13 @@ const About = () => {
                         </div>
                     </div>
                     <div className="about-image">
-                        {profileImage ? (
-                            <img src={profileImage} alt="Luis Ivorra" loading="lazy" />
+                        {profileImage && !imageError ? (
+                            <img
+                                src={profileImage}
+                                alt="Luis Ivorra"
+                                loading="lazy"
+                                onError={() => setImageError(true)}
+                            />
                         ) : (
                             <div className="image-placeholder">
                                 <span>DELKAFILMS</span>
